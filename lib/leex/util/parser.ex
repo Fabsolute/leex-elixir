@@ -24,9 +24,9 @@ defmodule Leex.Util.Parser do
 
   def parse_defs(ifile, {:ok, string, line_number} = line, defs, state) do
     # This little beauty matches out a macro definition, RE's are so clear.
-    regex = ~r/^[ \t]*([A-Z_][A-Za-z0-9_]*)[ \t]*=[ \t]*([^ \t\r\n]*)[ \t\r\n]*\$/u
+    regex = ~r/^[ \t]*([A-Z_][A-Za-z0-9_]*)[ \t]*=[ \t]*([^ \t\r\n]*)[ \t\r\n]*$/u
 
-    case Regex.run(regex, string, capture: [:list, :all_but_first]) do
+    case Regex.run(regex, string, capture: :all_but_first) do
       nil ->
         {line, defs, state}
 
@@ -60,10 +60,9 @@ defmodule Leex.Util.Parser do
 
       {:ok, string, line_number} ->
         case collect_rule(ifile, string, line_number) do
-          {:ok, regex, action_tokens, new_line_number} ->
+          {:ok, regex, code, action_tokens, new_line_number} ->
             {regex_action, action, new_state} =
-              parse_rule(regex, line_number, action_tokens, defs, acount, state)
-
+              parse_rule(regex, line_number, code, action_tokens, defs, acount, state)
             parse_rules(
               ifile,
               Util.next_line(ifile, new_line_number, state),
@@ -80,24 +79,41 @@ defmodule Leex.Util.Parser do
     end
   end
 
-  defp parse_rule(regex, line_number, [{:dot, _}], defs, acount, state) do
-    case Util.Regex.parse_rule_regexp(regex, defs, state) do
+  def parse_code(ifile, {:ok, @code_head <> _string, code_line_number}, state) do
+    # todo removed warning for unused characters
+    # hmm ?
+    {:ok, code_position} = :file.position(ifile, :cur)
+    end_code_line_number = Util.count_lines(ifile, code_line_number, state)
+    new_code_line_number = end_code_line_number - code_line_number
+    {{code_line_number, code_position, new_code_line_number}, state}
+  end
+
+  def parse_code(_, {:ok, _, line_number}, state) do
+    Util.add_error({line_number, :leex, :missing_code}, state)
+  end
+
+  def parse_code(_, {:eof, line_number}, state) do
+    Util.add_error({line_number, :leex, :missing_code}, state)
+  end
+
+  defp parse_rule(regex, line_number, _code, [{:__block__, [], []}], defs, acount, state) do
+    case Util.Regex.parse_rule_regexp(regex, defs) do
       {:ok, regex} ->
-        {:ok, {regex, acount}, {acount, :empty_action}, state}
+        {{regex, acount}, {acount, :empty_action}, state}
 
       {:error, error} ->
         Util.add_error({line_number, :leex, error}, state)
     end
   end
 
-  defp parse_rule(regex, line_number, action_tokens, defs, acount, state) do
-    case Util.Regex.parse_rule_regexp(regex, defs, state) do
+  defp parse_rule(regex, line_number, code, action_tokens, defs, acount, state) do
+    case Util.Regex.parse_rule_regexp(regex, defs) do
       {:ok, regex} ->
         [token_val, token_len, token_line] =
-          Enum.map(["token_val", "token_len", "token_line"], &var_used(&1, action_tokens))
+          Enum.map(["token_val", "token_len", "token_line"], &var_used(code, &1))
 
         # Check for token variables.
-        {:ok, {regex, acount}, {acount, action_tokens, token_val, token_len, token_line}, state}
+        {{regex, acount}, {acount, action_tokens, token_val, token_len, token_line}, state}
 
       {:error, e} ->
         Util.add_error({line_number, :leex, e}, state)
@@ -118,39 +134,33 @@ defmodule Leex.Util.Parser do
   end
 
   defp collect_rule(ifile, string, line_number) do
-    {regex, rest} = :string.take(string, " \t\r\n", true)
+    {regex, rest} = Util.string_take(string, ' \t\r\n', true)
 
-    case collect_action(ifile, rest, line_number, []) do
-      {:ok, [{:->, _} | tokens], line_number} -> {:ok, regex, tokens, line_number}
-      {:ok, _, _} -> {:error, {line_number, :leex, :bad_rule}}
-      {:eof, line_number} -> {:error, {line_number, :leex, :bad_rule}}
-      {:error, error, _} -> {:error, error}
+    case collect_action(ifile, rest, line_number) do
+      {:ok, tokens, code, line_number} -> {:ok, regex, code, tokens, line_number}
+      {:error, error} -> {:error, error}
     end
   end
 
-  defp collect_action(_ifile, {:error, _}, line_number, _cont) do
+  defp collect_action(_ifile, {:error, _}, line_number) do
     {:error, {line_number, :leex, :cannot_parse}, :ignored_end_line}
   end
 
-  defp collect_action(ifile, string, line_number, continuation) do
-    # todo this should be work for elixir code not erlang
-    case :erl_scan.tokens(continuation, string, line_number) do
-      {:done, {:ok, tokens, _}, _} ->
-        {:ok, tokens, line_number}
+  defp collect_action(ifile, code, line_number) do
+    case Code.string_to_quoted("def #{code}") do
+      {:ok, {:def, _, [[do: context]]}} ->
+        {:ok, context, code, line_number}
 
-      {:done, {:eof, _}, _} ->
-        {:eof, line_number}
-
-      {:done, {:error, error, _}, _} ->
-        {:error, error, line_number}
-
-      {:more, continuation} ->
-        collect_action(ifile, IO.gets(ifile, :leex), line_number + 1, continuation)
+      {:error, error} ->
+        case IO.gets(ifile, :leex) do
+          :eof -> {:error, error}
+          {:error, error_2} -> {:error, {error, error_2}}
+          content -> collect_action(ifile, "#{code}\n#{content}", line_number + 1)
+        end
     end
   end
 
-  defp var_used(name, tokens) do
-    # todo this should be work for elixir code not erlang
-    List.keyfind(tokens, name, 3) != nil
+  defp var_used(code, name) do
+    Regex.match?(~r/(?<![\w:])#{name}(?![\w(])/, code)
   end
 end

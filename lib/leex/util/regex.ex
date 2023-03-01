@@ -2,21 +2,22 @@ defmodule Leex.Util.Regex do
   alias Leex.Util
   require Util
 
-  def parse_rule_regexp(regex, [{name, def} | defs], state) do
-    regex = Regex.replace(~r/\\{#{name}\\}/u, regex, def)
-    parse_rule_regexp(regex, defs, state)
+  def parse_rule_regexp(regex, [{name, def} | defs]) do
+    regex = String.replace(regex, "{#{name}}", def)
+    regex |> IO.inspect()
+    parse_rule_regexp(regex, defs)
   end
 
-  def parse_rule_regexp(regex, [], state) do
-    case re_parse(regex, state) do
+  def parse_rule_regexp(regex, []) do
+    case re_parse(regex) do
       {:ok, regex} -> {:ok, regex}
       {:error, error} -> {:error, {:regexp, error}}
     end
   end
 
-  defp re_parse(string, state) do
+  defp re_parse(string) do
     try do
-      case re_reg(string, 0, state) do
+      case re_reg(string, 0) do
         {regex, _, ""} -> {:ok, regex}
         {_, _, <<c::utf8, _rest::binary>>} -> {:error, {:illegal_char, [c]}}
       end
@@ -25,93 +26,93 @@ defmodule Leex.Util.Regex do
     end
   end
 
-  defp re_reg(string, sub_number, state), do: re_alt(string, sub_number, state)
+  defp re_reg(string, sub_number), do: re_alt(string, sub_number)
 
-  defp re_alt(string, sub_number, state) do
-    {regex, sub_number, string} = re_seq(string, sub_number, state)
+  defp re_alt(string, sub_number) do
+    {regex, sub_number, string} = re_seq(string, sub_number)
 
-    case re_alt1(string, sub_number, state) do
+    case re_alt1(string, sub_number) do
       {[], sub_number, string} -> {regex, sub_number, string}
       {regex2, sub_number, string} -> {{:alt, [regex | regex2]}, sub_number, string}
     end
   end
 
-  defp re_alt1(<<?|, string::binary>>, sub_number, state) do
-    {regex, sub_number, string} = re_seq(string, sub_number, state)
-    {regex2, sub_number, string} = re_alt1(string, sub_number, state)
+  defp re_alt1(<<?|, string::binary>>, sub_number) do
+    {regex, sub_number, string} = re_seq(string, sub_number)
+    {regex2, sub_number, string} = re_alt1(string, sub_number)
     {[regex | regex2], sub_number, string}
   end
 
-  defp re_alt1(string, sub_number, _), do: {[], sub_number, string}
+  defp re_alt1(string, sub_number), do: {[], sub_number, string}
 
-  defp re_seq(string, sub_number, state) do
-    case re_seq1(string, sub_number, state) do
+  defp re_seq(string, sub_number) do
+    case re_seq1(string, sub_number) do
       {[], sub_number, string} -> {:epsilon, sub_number, string}
       {[regex], sub_number, string} -> {regex, sub_number, string}
       {regex, sub_number, string} -> {{:seq, regex}, sub_number, string}
     end
   end
 
-  defp re_seq1(<<c, _rest::binary>> = string, sub_number, state) when c != ?| and c != ?) do
-    {regex, sub_number, string} = re_repeat(string, sub_number, state)
-    {regex2, sub_number, string} = re_seq1(string, sub_number, state)
+  defp re_seq1(<<c, _rest::binary>> = string, sub_number) when c != ?| and c != ?) do
+    {regex, sub_number, string} = re_repeat(string, sub_number)
+    {regex2, sub_number, string} = re_seq1(string, sub_number)
     {[regex | regex2], sub_number, string}
   end
 
-  defp re_seq1(string, sub_number, _), do: {[], sub_number, string}
+  defp re_seq1(string, sub_number), do: {[], sub_number, string}
 
-  defp re_repeat(string, sub_number, state) do
-    {regex, sub_number, string} = re_single(string, sub_number, state)
-    re_repeat1(string, sub_number, regex, state)
+  defp re_repeat(string, sub_number) do
+    {regex, sub_number, string} = re_single(string, sub_number)
+    re_repeat1(string, sub_number, regex)
   end
 
-  defp re_repeat1(<<?*, string::binary>>, sub_number, regex, state) do
-    re_repeat1(string, sub_number, {:kclosure, regex}, state)
+  defp re_repeat1(<<?*, string::binary>>, sub_number, regex) do
+    re_repeat1(string, sub_number, {:kclosure, regex})
   end
 
-  defp re_repeat1(<<?+, string::binary>>, sub_number, regex, state) do
-    re_repeat1(string, sub_number, {:pclosure, regex}, state)
+  defp re_repeat1(<<?+, string::binary>>, sub_number, regex) do
+    re_repeat1(string, sub_number, {:pclosure, regex})
   end
 
-  defp re_repeat1(<<??, string::binary>>, sub_number, regex, state) do
-    re_repeat1(string, sub_number, {:optional, regex}, state)
+  defp re_repeat1(<<??, string::binary>>, sub_number, regex) do
+    re_repeat1(string, sub_number, {:optional, regex})
   end
 
-  defp re_repeat1(string, sub_number, regex, _), do: {regex, sub_number, string}
+  defp re_repeat1(string, sub_number, regex), do: {regex, sub_number, string}
 
-  defp re_single(<<?(, string::binary>>, sub_number, state) do
+  defp re_single(<<?(, string::binary>>, sub_number) do
     sub_number = sub_number + 1
 
-    case re_reg(string, sub_number, state) do
+    case re_reg(string, sub_number) do
       {regex, sub_number, <<?), string::binary>>} -> {regex, sub_number, string}
       _ -> Util.parse_error({:unterminated, "("})
     end
   end
 
-  defp re_single(<<?., string::binary>>, sub_number, _) do
+  defp re_single(<<?., string::binary>>, sub_number) do
     {{:comp_class, "\n"}, sub_number, string}
   end
 
-  defp re_single("[^" <> string, sub_number, _state) do
+  defp re_single("[^" <> string, sub_number) do
     case re_char_class(string) do
       {regex, <<?], string::binary>>} -> {{:comp_class, regex}, sub_number, string}
       _ -> Util.parse_error({:unterminated, "["})
     end
   end
 
-  defp re_single(<<?[, string::binary>>, sub_number, _state) do
+  defp re_single(<<?[, string::binary>>, sub_number) do
     case re_char_class(string) do
       {regex, <<?], string::binary>>} -> {{:char_class, regex}, sub_number, string}
       _ -> Util.parse_error({:unterminated, "["})
     end
   end
 
-  defp re_single(<<?\\, string::binary>>, sub_number, _state) do
+  defp re_single(<<?\\, string::binary>>, sub_number) do
     {regex, string} = re_char(?\\, string)
     {{:lit, [regex]}, sub_number, string}
   end
 
-  defp re_single(<<c, string::binary>>, sub_number, _state) do
+  defp re_single(<<c, string::binary>>, sub_number) do
     if Util.special_char(c) do
       Util.parse_error({:illegal_char, [c]})
     else
@@ -134,7 +135,7 @@ defmodule Leex.Util.Regex do
             Util.parse_error({:char_class, Util.string_between(<<c>> <> string, string_3)})
         end
 
-      {^c, string} ->
+      {c, string} ->
         re_char_class(string, [c | regex])
     end
   end
