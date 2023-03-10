@@ -2,6 +2,7 @@ defmodule Leex.Util.DFA do
   alias Leex.Util.NFA
   alias Leex.Util
   alias Leex.Util.OrdSet
+  alias Leex.Util.OrdDict
 
   def make_dfa(regex_actions) do
     {nfa, nfa_first} = NFA.build_combined_nfa(regex_actions)

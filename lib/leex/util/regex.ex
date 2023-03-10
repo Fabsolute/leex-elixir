@@ -3,9 +3,9 @@ defmodule Leex.Util.Regex do
   require Util
 
   def parse_rule_regexp(regex, [{name, def} | defs]) do
-    regex = String.replace(regex, "{#{name}}", def)
-    regex |> IO.inspect()
-    parse_rule_regexp(regex, defs)
+    regex
+    |> String.replace("{#{name}}", def)
+    |> parse_rule_regexp(defs)
   end
 
   def parse_rule_regexp(regex, []) do
