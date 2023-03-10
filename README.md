@@ -1,6 +1,6 @@
 # Leex
 
-**TODO: Add description**
+Leex is an open source implementation of `:erlang.leex`.
 
 ## Installation
 
@@ -42,7 +42,7 @@ end
 You can create a definition with `<~` operator. 
 For instance: `"INT" <~ "[0-9]+"`
 
-# Rule operator ~>
+# Rule operator ~> ^4ss3rqAHOry
 
 You can create a rule with `~>` operator.
 For instance: `"0x{INT}" ~> {:token, {:hex_number, token_line, String.to_integer(token_val)}}`
