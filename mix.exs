@@ -10,7 +10,8 @@ defmodule Leex.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      package: package()
+      package: package(),
+      description: description()
     ]
   end
 
@@ -21,6 +22,10 @@ defmodule Leex.MixProject do
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/fabsolute/leex-elixir"}
     ]
+  end
+
+  def description() do
+    "Leex is an open source implementation of :erlang.leex."
   end
 
   # Run "mix help compile.app" to learn about applications.
