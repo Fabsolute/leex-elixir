@@ -27,11 +27,12 @@ defmodule Leex.Util.DFA do
 
   defp build_dfa(states, unmarkeds, next_state, transitions, markeds, nfa) do
     for s <- states do
-      for {crs, _st} <- elem(nfa,s-1).edges, crs != :epsilon do
+      for {crs, _st} <- elem(nfa, s - 1).edges, crs != :epsilon do
         for cr <- crs, do: cr
       end
     end
     |> List.flatten()
+    |> Enum.uniq()
     |> Enum.sort()
     |> disjoint_crs()
     |> build_dfa(states, unmarkeds, next_state, transitions, markeds, nfa)
@@ -129,7 +130,7 @@ defmodule Leex.Util.DFA do
   defp min_delete([], _, _, _, rewrites, mini_dfa), do: {mini_dfa, rewrites}
 
   defp accept([state | states], nfa) do
-    case elem(nfa,state-1) do
+    case elem(nfa, state - 1) do
       %Leex.NfaState{accept: {:accept, a}} -> {:accept, a}
       %Leex.NfaState{accept: :noaccept} -> accept(states, nfa)
     end

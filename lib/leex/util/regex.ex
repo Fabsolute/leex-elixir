@@ -90,7 +90,7 @@ defmodule Leex.Util.Regex do
   end
 
   defp re_single(<<?., string::binary>>, sub_number) do
-    {{:comp_class, "\n"}, sub_number, string}
+    {{:comp_class, [?\n]}, sub_number, string}
   end
 
   defp re_single("[^" <> string, sub_number) do

@@ -465,7 +465,7 @@ defmodule Leex.Util.Core do
       defp yyrev(list), do: Enum.reverse(list)
       defp yyrev(list, tail), do: Enum.reverse(list, tail)
       defp yypre(string, n), do: String.slice(string, 0..(n - 1))
-      defp yysuf(string, n), do: Enum.drop(string, n)
+      defp yysuf(string, n), do: String.slice(string, n..-1)
 
       defp adjust_line(token_len, token_len, _string, line), do: line
 
