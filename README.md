@@ -20,37 +20,63 @@ Usage
 defmodule Example do
   use Leex
 
-  "INT" <~ "[0-9]+"
-  "ATOM" <~ ":[a-z_]+"
-  "WHITESPACE" <~ "[\s\t\n\r]"
+  defd("INT", "[0-9]+")
+  defd("ATOM", ":[a-z_]+")
 
-  "{INT}" ~> {:token, {:int, token_line, String.to_integer(token_val)}}
-  "{ATOM}" ~> {:token, {:atom, token_line, to_atom(token_val)}}
-  "\\[" ~> {:token, {:"[", token_line}}
-  "\\]" ~> {:token, {:"]", token_line}}
-  "," ~> {:token, {:",", token_line}}
-  "{WHITESPACE}+" ~> :skip_token
+  skip "[\s\t\n\r]+"
 
-  def to_atom(<<?:, string::binary>>) do
+  defr "{INT}" do
+    token({:int, token_line, String.to_integer(token_val)})
+  end
+
+  defr "{ATOM}" do
+    token({:atom, token_line, to_atom(token_val)})
+  end
+
+  defr "\\[" do
+    token({:"[", token_line})
+  end
+
+  defr "\\]" do
+    token({:"]", token_line})
+  end
+
+  defr "," do
+    token({:",", token_line})
+  end
+
+  defp to_atom(<<?:, string::binary>>) do
     String.to_atom(string)
   end
 end
 ```
 
-# Definition operator <~
+# Definition
 
-You can create a definition with `<~` operator. 
-For instance: `"INT" <~ "[0-9]+"`
+You can create a definition with `defd` function. 
+For instance: `defd("INT", "[0-9]+")`
 
-# Rule operator ~>
+# Rule
 
-You can create a rule with `~>` operator.
-For instance: `"0x{INT}" ~> {:token, {:hex_number, token_line, String.to_integer(token_val)}}`
+You can create a rule with `defr` function.
+For instance: 
+```elixir
+defr "0x{INT}" do
+    token({:hex_number, token_line, String.to_integer(token_val)})
+end
+```
+
+# Skip
+
+You can create a ignored tokens with `skip` function.
+For instance `skip "[\s\t\n\r]+"`
 
 ## Variables
 
 `token_line`: Line of token
+
 `token_val`: Value of token
+
 `token_len`: Length of token
 
 

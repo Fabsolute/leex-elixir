@@ -23,8 +23,7 @@ defmodule Example do
   end
 
   defr "," do
-    val = "what about string literal #{token_line}"
-    token({:",", val})
+    token({:",", token_line})
   end
 
   defp to_atom(<<?:, string::binary>>) do
