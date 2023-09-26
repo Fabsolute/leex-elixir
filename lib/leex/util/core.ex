@@ -2,12 +2,12 @@ defmodule Leex.Util.Core do
   alias Leex.Util
 
   def generate_functions(rules, defs) do
-    included_functions = Util.Included.get_included_functions()
     {regex_actions, actions} = get_actions(rules, defs)
     {dfa, dfa_first} = Util.DFA.make_dfa(regex_actions)
 
+    included_functions = Util.Included.get_included_functions(dfa_first)
     action_functions = generate_action_functions(actions)
-    dfa_functions = generate_dfa_functions(dfa, dfa_first)
+    dfa_functions = generate_dfa_functions(dfa)
 
     quote do
       unquote(included_functions)
@@ -42,11 +42,10 @@ defmodule Leex.Util.Core do
     end
   end
 
-  defp generate_dfa_functions(dfa, dfa_first) do
+  defp generate_dfa_functions(dfa) do
     states = dfa |> Enum.map(&get_state_code/1)
 
     quote do
-      defp yystate(), do: unquote(dfa_first)
       unquote(states)
       defp yystate(s, ics, line, tlen, action, alen), do: {action, alen, tlen, ics, line, s}
     end

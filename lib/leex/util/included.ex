@@ -1,6 +1,7 @@
 defmodule Leex.Util.Included do
-  def get_included_functions do
+  def get_included_functions(initial_state) do
     quote do
+      @initial_state unquote(initial_state)
       def test() do
         string("[1,2,3,4,5,6, :ahmet, [:turk, 4]]")
       end
@@ -14,7 +15,7 @@ defmodule Leex.Util.Included do
       end
 
       defp string(string, line, token_string, tokens) do
-        case yystate(yystate(), string, line, 0, :reject, 0) do
+        case yystate(@initial_state, string, line, 0, :reject, 0) do
           # Accepting end state
           {accept, alen, string, line_1} ->
             string_cont(string, line_1, yyaction(accept, alen, token_string, line), tokens)
@@ -75,7 +76,7 @@ defmodule Leex.Util.Included do
       def token(continuation, string), do: token(continuation, string, 1)
 
       def token(string, [], line) do
-        token(yystate(), string, line, string, 0, line, :reject, 0)
+        token(@initial_state, string, line, string, 0, line, :reject, 0)
       end
 
       def token(
@@ -190,12 +191,12 @@ defmodule Leex.Util.Included do
       end
 
       defp token_cont(string, line, :skip_token) do
-        token(yystate(), string, line, string, 0, line, :reject, 0)
+        token(@initial_state, string, line, string, 0, line, :reject, 0)
       end
 
       defp token_cont(string, line, {:skip_token, push}) do
         string = push <> string
-        token(yystate(), string, line, string, 0, line, :reject, 0)
+        token(@initial_state, string, line, string, 0, line, :reject, 0)
       end
 
       defp token_cont(string, line, {:error, error}) do
@@ -205,7 +206,7 @@ defmodule Leex.Util.Included do
       def tokens(continuation, string), do: tokens(continuation, string, 1)
 
       def tokens([], string, line) do
-        tokens(yystate(), string, line, string, 0, line, [], :reject, 0)
+        tokens(@initial_state, string, line, string, 0, line, [], :reject, 0)
       end
 
       def tokens(
@@ -327,12 +328,12 @@ defmodule Leex.Util.Included do
       end
 
       defp tokens_cont(string, line, {:token, token}, tokens) do
-        tokens(yystate(), string, line, string, 0, line, [token | tokens], :reject, 0)
+        tokens(@initial_state, string, line, string, 0, line, [token | tokens], :reject, 0)
       end
 
       defp tokens_cont(string, line, {:token, token, push}, tokens) do
         string = push <> string
-        tokens(yystate(), string, line, string, 0, line, [token | tokens], :reject, 0)
+        tokens(@initial_state, string, line, string, 0, line, [token | tokens], :reject, 0)
       end
 
       defp tokens_cont(string, line, {:end_token, token}, tokens) do
@@ -345,12 +346,12 @@ defmodule Leex.Util.Included do
       end
 
       defp tokens_cont(string, line, :skip_token, tokens) do
-        tokens(yystate(), string, line, string, 0, line, tokens, :reject, 0)
+        tokens(@initial_state, string, line, string, 0, line, tokens, :reject, 0)
       end
 
       defp tokens_cont(string, line, {:skip_token, push}, tokens) do
         string = push <> string
-        tokens(yystate(), string, line, string, 0, line, tokens, :reject, 0)
+        tokens(@initial_state, string, line, string, 0, line, tokens, :reject, 0)
       end
 
       defp tokens_cont(string, line, {:error, error}, _tokens) do
@@ -358,7 +359,7 @@ defmodule Leex.Util.Included do
       end
 
       defp skip_tokens(string, line, error) do
-        skip_tokens(yystate(), string, line, string, 0, line, error, :reject, 0)
+        skip_tokens(@initial_state, string, line, string, 0, line, error, :reject, 0)
       end
 
       defp skip_tokens(
@@ -417,12 +418,12 @@ defmodule Leex.Util.Included do
       end
 
       defp skip_cont(string, line, {:token, _token}, error) do
-        skip_tokens(yystate(), string, line, string, 0, line, error, :reject, 0)
+        skip_tokens(@initial_state, string, line, string, 0, line, error, :reject, 0)
       end
 
       defp skip_cont(string, line, {:token, _token, push}, error) do
         string = push <> string
-        skip_tokens(yystate(), string, line, string, 0, line, error, :reject, 0)
+        skip_tokens(@initial_state, string, line, string, 0, line, error, :reject, 0)
       end
 
       defp skip_cont(string, line, {:end_token, _token}, error) do
@@ -435,16 +436,16 @@ defmodule Leex.Util.Included do
       end
 
       defp skip_cont(string, line, :skip_token, error) do
-        skip_tokens(yystate(), string, line, string, 0, line, error, :reject, 0)
+        skip_tokens(@initial_state, string, line, string, 0, line, error, :reject, 0)
       end
 
       defp skip_cont(string, line, {:skip_token, push}, error) do
         string = push <> string
-        skip_tokens(yystate(), string, line, string, 0, line, error, :reject, 0)
+        skip_tokens(@initial_state, string, line, string, 0, line, error, :reject, 0)
       end
 
       defp skip_cont(string, line, {:error, _error}, error) do
-        skip_tokens(yystate(), string, line, string, 0, line, error, :reject, 0)
+        skip_tokens(@initial_state, string, line, string, 0, line, error, :reject, 0)
       end
 
       defp yyrev(list), do: Enum.reverse(list)
