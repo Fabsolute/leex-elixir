@@ -19,7 +19,7 @@ defmodule Leex.Util.Core do
   defp generate_action_functions(actions) do
     actions = prep_actions(actions)
 
-    for {action, code, [token_line, yy_tcs, token_len], name} <- actions do
+    for {action, code, [token_line, yy_tcs, token_len]} <- actions do
       token_val_definition =
         if yy_tcs != :_ do
           quote do
@@ -43,7 +43,7 @@ defmodule Leex.Util.Core do
   end
 
   defp generate_dfa_functions(dfa, dfa_first) do
-    states = dfa |> dbg |> Enum.map(&get_state_code/1)
+    states = dfa |> Enum.map(&get_state_code/1)
 
     quote do
       defp yystate(), do: unquote(dfa_first)
@@ -60,7 +60,7 @@ defmodule Leex.Util.Core do
           [token_val, token_len, token_line] =
             Enum.map(
               [:token_val, :token_len, :token_line],
-              &(Util.AST.var_used(context |> dbg, &1) |> dbg)
+              &Util.AST.var_used(context, &1)
             )
 
           # Check for token variables.
@@ -94,8 +94,7 @@ defmodule Leex.Util.Core do
             end
           end)
 
-        name = String.to_atom("yy_action_#{action}")
-        {action, code, vars, name}
+        {action, code, vars}
     end)
   end
 
@@ -108,29 +107,25 @@ defmodule Leex.Util.Core do
   end
 
   defp get_state_code(%Leex.DfaState{no: no, trans: trans, accept: {:accept, accept}}) do
-    for tr <- pack_trans(trans) do
-      accept_state_ast = get_accept_state_code(no, accept, tr)
+    accept_state_ast = trans |> pack_trans |> Enum.map(&get_accept_state_code(no, accept, &1))
 
-      quote do
-        unquote(accept_state_ast)
+    quote do
+      unquote(accept_state_ast)
 
-        defp yystate(unquote(no), ics, line, tlen, _, _) do
-          {unquote(accept), tlen, ics, line, unquote(no)}
-        end
+      defp yystate(unquote(no), ics, line, tlen, _, _) do
+        {unquote(accept), tlen, ics, line, unquote(no)}
       end
     end
   end
 
   defp get_state_code(%Leex.DfaState{no: no, trans: trans, accept: :noaccept}) do
-    for tr <- pack_trans(trans) do
-      noaccept_state_ast = get_noaccept_state_code(no, tr)
+    noaccept_state_ast = trans |> pack_trans |> Enum.map(&get_noaccept_state_code(no, &1))
 
-      quote do
-        unquote(noaccept_state_ast)
+    quote do
+      unquote(noaccept_state_ast)
 
-        defp yystate(unquote(no), ics, line, tlen, action, alen) do
-          {action, alen, tlen, ics, line, unquote(no)}
-        end
+      defp yystate(unquote(no), ics, line, tlen, action, alen) do
+        {action, alen, tlen, ics, line, unquote(no)}
       end
     end
   end
@@ -138,12 +133,12 @@ defmodule Leex.Util.Core do
   # region Accept
 
   defp get_accept_state_code(next_state, action, {{char, :maxchar}, state}) do
-    get_accept_body(state, :line, action)
+    get_accept_body(state, Macro.var(:line, __MODULE__), action)
     |> get_accept_max_code(next_state, char)
   end
 
   defp get_accept_state_code(next_state, action, {{char_1, char_2}, state}) do
-    get_accept_body(state, :line, action)
+    get_accept_body(state, Macro.var(:line, __MODULE__), action)
     |> get_accept_range_code(next_state, char_1, char_2)
   end
 
@@ -159,24 +154,31 @@ defmodule Leex.Util.Core do
   end
 
   defp get_accept_state_code(next_state, action, {char, state}) do
-    get_accept_body(state, Macro.var(:line, nil), action)
+    get_accept_body(state, Macro.var(:line, __MODULE__), action)
     |> get_accept_1_code(next_state, char)
   end
 
   defp get_accept_max_code(body, state, min) do
-    get_max_code(state, min, Macro.var(:_, nil), :_, body)
+    get_max_code(body, state, min, Macro.var(:_, __MODULE__), Macro.var(:_, __MODULE__))
   end
 
   defp get_accept_range_code(body, state, min, max) do
-    get_range_code(state, min, max, Macro.var(:_, nil), :_, body)
+    get_range_code(
+      body,
+      state,
+      min,
+      max,
+      Macro.var(:_, __MODULE__),
+      Macro.var(:_, __MODULE__)
+    )
   end
 
   defp get_accept_1_code(body, state, char) do
-    get_1_code(state, char, Macro.var(:_, nil), :_, body)
+    get_1_code(body, state, char, Macro.var(:_, __MODULE__), Macro.var(:_, __MODULE__))
   end
 
   defp get_accept_body(next, line, action) do
-    get_body(next, line, action, :tlen)
+    get_body(next, line, action, Macro.var(:tlen, __MODULE__))
   end
 
   # endregion
@@ -184,44 +186,56 @@ defmodule Leex.Util.Core do
   # region No Accept
 
   defp get_noaccept_state_code(next_state, {{char, :maxchar}, state}) do
-    get_noaccept_body(state, "line")
-    |> get_noaccept_head_max(next_state, char)
+    get_noaccept_body(state, Macro.var(:line, __MODULE__))
+    |> get_noaccept_max_code(next_state, char)
   end
 
   defp get_noaccept_state_code(next_state, {{char_1, char_2}, state}) do
-    get_noaccept_body(state, "line")
-    |> get_noaccept_head_range(next_state, char_1, char_2)
+    get_noaccept_body(state, Macro.var(:line, __MODULE__))
+    |> get_noaccept_range_code(next_state, char_1, char_2)
   end
 
   defp get_noaccept_state_code(next_state, {?\n, state}) do
-    get_noaccept_body(state, "line+1")
-    |> get_noaccept_head_1(next_state, ?\n)
+    get_noaccept_body(
+      state,
+      quote do
+        line + 1
+      end
+    )
+    |> get_noaccept_1_code(next_state, ?\n)
   end
 
   defp get_noaccept_state_code(next_state, {char, state}) do
-    get_noaccept_body(state, "line")
-    |> get_noaccept_head_1(next_state, char)
+    get_noaccept_body(state, Macro.var(:line, __MODULE__))
+    |> get_noaccept_1_code(next_state, char)
   end
 
-  defp get_noaccept_head_max(state, min, body) do
-    get_max_code(state, min, "action", "alen", body)
+  defp get_noaccept_max_code(body, state, min) do
+    get_max_code(body, state, min, Macro.var(:action, __MODULE__), Macro.var(:alen, __MODULE__))
   end
 
-  defp get_noaccept_head_range(state, min, max) do
-    get_range_code(state, min, max, "action", "alen")
+  defp get_noaccept_range_code(body, state, min, max) do
+    get_range_code(
+      body,
+      state,
+      min,
+      max,
+      Macro.var(:action, __MODULE__),
+      Macro.var(:alen, __MODULE__)
+    )
   end
 
-  defp get_noaccept_head_1(state, char) do
-    get_1_code(state, char, "action", "alen")
+  defp get_noaccept_1_code(body, state, char) do
+    get_1_code(body, state, char, Macro.var(:action, __MODULE__), Macro.var(:alen, __MODULE__))
   end
 
   defp get_noaccept_body(next, line) do
-    get_body(next, line, Macro.var(:action, nil), :alen)
+    get_body(next, line, Macro.var(:action, __MODULE__), Macro.var(:alen, __MODULE__))
   end
 
   # endregion
 
-  defp get_max_code(state, min, action, alen, body) do
+  defp get_max_code(body, state, min, action, alen) do
     quote do
       defp yystate(unquote(state), <<c, ics::binary>>, line, tlen, unquote(action), unquote(alen))
            when c >= unquote(min) do
@@ -230,7 +244,7 @@ defmodule Leex.Util.Core do
     end
   end
 
-  defp get_range_code(state, min, max, action, alen, body) do
+  defp get_range_code(body, state, min, max, action, alen) do
     quote do
       defp yystate(
              unquote(state),
@@ -238,7 +252,7 @@ defmodule Leex.Util.Core do
              line,
              tlen,
              unquote(action),
-             unquote(Macro.var(alen, nil))
+             unquote(alen)
            )
            when c >= unquote(min) and c <= unquote(max) do
         unquote(body)
@@ -246,7 +260,7 @@ defmodule Leex.Util.Core do
     end
   end
 
-  defp get_1_code(state, char, action, alen, body) do
+  defp get_1_code(body, state, char, action, alen) do
     quote do
       defp yystate(
              unquote(state),
@@ -254,7 +268,7 @@ defmodule Leex.Util.Core do
              line,
              tlen,
              unquote(action),
-             unquote(Macro.var(alen, nil))
+             unquote(alen)
            ) do
         unquote(body)
       end
@@ -266,10 +280,10 @@ defmodule Leex.Util.Core do
       yystate(
         unquote(next),
         ics,
-        unquote(Macro.var(line, nil)),
+        unquote(line),
         tlen + 1,
         unquote(action),
-        unquote(Macro.var(alen, nil))
+        unquote(alen)
       )
     end
   end

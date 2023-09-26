@@ -1,6 +1,10 @@
 defmodule Leex.Util.Included do
   def get_included_functions do
     quote do
+      def test() do
+        string("[1,2,3,4,5,6, :ahmet, [:turk, 4]]")
+      end
+
       def string(string), do: string(string, 1)
 
       def string(string, line), do: string(string, line, string, [])

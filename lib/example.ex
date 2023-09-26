@@ -27,7 +27,7 @@ defmodule Example do
     token({:",", val})
   end
 
-  def to_atom(<<?:, string::binary>>) do
+  defp to_atom(<<?:, string::binary>>) do
     String.to_atom(string)
   end
 end
