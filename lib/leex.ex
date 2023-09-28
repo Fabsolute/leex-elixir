@@ -1,5 +1,5 @@
 defmodule Leex do
-  alias Leex.Util.Core
+  alias Leex.Core
 
   @token :token
   @skip_token :skip_token

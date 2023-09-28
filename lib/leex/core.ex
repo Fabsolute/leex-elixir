@@ -1,11 +1,12 @@
-defmodule Leex.Util.Core do
+defmodule Leex.Core do
   alias Leex.Util
+  alias Leex.{DFA, Included}
 
   def generate_functions(rules, defs) do
     {regex_actions, actions} = get_actions(rules, defs)
-    {dfa, dfa_first} = Util.DFA.make_dfa(regex_actions)
+    {dfa, dfa_first} = DFA.make_dfa(regex_actions)
 
-    included_functions = Util.Included.get_included_functions(dfa_first)
+    included_functions = Included.get_included_functions(dfa_first)
     action_functions = generate_action_functions(actions)
     dfa_functions = generate_dfa_functions(dfa)
 
@@ -24,7 +25,7 @@ defmodule Leex.Util.Core do
         if yy_tcs != :_ do
           quote do
             unquote(Macro.var(:token_val, nil)) =
-              yypre(unquote(Macro.var(yy_tcs, nil)), unquote(Macro.var(token_len, nil)))
+              Runtime.Helper.prefix(unquote(Macro.var(yy_tcs, nil)), unquote(Macro.var(token_len, nil)))
           end
         end
 
@@ -97,7 +98,7 @@ defmodule Leex.Util.Core do
     end)
   end
 
-  defp get_state_code(%Leex.DfaState{no: no, trans: [], accept: {:accept, accept}}) do
+  defp get_state_code(%DFA{no: no, trans: [], accept: {:accept, accept}}) do
     quote do
       defp yystate(unquote(no), ics, line, tlen, _, _) do
         {unquote(accept), tlen, ics, line}
@@ -105,7 +106,7 @@ defmodule Leex.Util.Core do
     end
   end
 
-  defp get_state_code(%Leex.DfaState{no: no, trans: trans, accept: {:accept, accept}}) do
+  defp get_state_code(%DFA{no: no, trans: trans, accept: {:accept, accept}}) do
     accept_state_ast = trans |> pack_trans |> Enum.map(&get_accept_state_code(no, accept, &1))
 
     quote do
@@ -117,7 +118,7 @@ defmodule Leex.Util.Core do
     end
   end
 
-  defp get_state_code(%Leex.DfaState{no: no, trans: trans, accept: :noaccept}) do
+  defp get_state_code(%DFA{no: no, trans: trans, accept: :noaccept}) do
     noaccept_state_ast = trans |> pack_trans |> Enum.map(&get_noaccept_state_code(no, &1))
 
     quote do

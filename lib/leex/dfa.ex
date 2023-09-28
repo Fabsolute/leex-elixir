@@ -1,8 +1,8 @@
-defmodule Leex.Util.DFA do
-  alias Leex.Util.NFA
+defmodule Leex.DFA do
+  defstruct no: nil, nfa: [], trans: [], accept: :noaccept
+
   alias Leex.Util
-  alias Leex.Util.OrdSet
-  alias Leex.Util.OrdDict
+  alias Leex.NFA
 
   def make_dfa(regex_actions) do
     {nfa, nfa_first} = NFA.build_combined_nfa(regex_actions)
@@ -11,7 +11,7 @@ defmodule Leex.Util.DFA do
   end
 
   defp build_dfa(nfa, nfa_first_state) do
-    dfa = %Leex.DfaState{no: 0, nfa: Util.eclosure([nfa_first_state], nfa)}
+    dfa = %__MODULE__{no: 0, nfa: Util.eclosure([nfa_first_state], nfa)}
     {build_dfa([dfa], 1, [], nfa), 0}
   end
 
@@ -51,20 +51,20 @@ defmodule Leex.Util.DFA do
               states,
               unmarkeds,
               next_state,
-              OrdDict.store(transitions, cr, t),
+              :orddict.store(cr, t, transitions),
               markeds,
               nfa
             )
 
           :no ->
-            unmarked = %Leex.DfaState{no: next_state, nfa: s}
+            unmarked = %__MODULE__{no: next_state, nfa: s}
 
             build_dfa(
               crs,
               states,
               [unmarked | unmarkeds],
               next_state + 1,
-              OrdDict.store(transitions, cr, next_state),
+              :orddict.store(cr, next_state, transitions),
               markeds,
               nfa
             )
@@ -113,7 +113,7 @@ defmodule Leex.Util.DFA do
   defp min_use(old, []), do: old
 
   defp min_delete(
-         [%Leex.DfaState{no: no, trans: trans, accept: accept} | dfa],
+         [%__MODULE__{no: no, trans: trans, accept: accept} | dfa],
          trans,
          accept,
          new_next_state,
@@ -131,8 +131,8 @@ defmodule Leex.Util.DFA do
 
   defp accept([state | states], nfa) do
     case elem(nfa, state - 1) do
-      %Leex.NfaState{accept: {:accept, a}} -> {:accept, a}
-      %Leex.NfaState{accept: :noaccept} -> accept(states, nfa)
+      %NFA{accept: {:accept, a}} -> {:accept, a}
+      %NFA{accept: :noaccept} -> accept(states, nfa)
     end
   end
 
@@ -143,19 +143,19 @@ defmodule Leex.Util.DFA do
   end
 
   defp disjoint_crs([{c1, c2}, {c3, c4} | crs]) when c1 == c3 do
-    [{c1, c2} | disjoint_crs(OrdSet.put(crs, {c2 + 1, c4}))]
+    [{c1, c2} | disjoint_crs(:ordsets.add_element({c2 + 1, c4}, crs))]
   end
 
   defp disjoint_crs([{c1, c2}, {c3, c4} | crs]) when c1 < c3 and c2 >= c3 and c2 < c4 do
-    [{c1, c3 - 1} | disjoint_crs(OrdSet.union([{c3, c2}, {c2 + 1, c4}], crs))]
+    [{c1, c3 - 1} | disjoint_crs(:ordsets.union([{c3, c2}, {c2 + 1, c4}], crs))]
   end
 
   defp disjoint_crs([{c1, c2}, {c3, c4} | crs]) when c1 < c3 and c2 == c4 do
-    [{c1, c3 - 1} | disjoint_crs(OrdSet.put(crs, {c3, c4}))]
+    [{c1, c3 - 1} | disjoint_crs(:ordsets.add_element({c3, c4}, crs))]
   end
 
   defp disjoint_crs([{c1, c2}, {c3, c4} | crs]) when c1 < c3 and c2 > c4 do
-    [{c1, c3 - 1} | disjoint_crs(OrdSet.union([{c3, c4}, {c4 + 1, c2}], crs))]
+    [{c1, c3 - 1} | disjoint_crs(:ordsets.union([{c3, c4}, {c4 + 1, c2}], crs))]
   end
 
   defp disjoint_crs([cr | crs]), do: [cr | disjoint_crs(crs)]
@@ -163,12 +163,12 @@ defmodule Leex.Util.DFA do
 
   defp dfa_state_exist(state, unmarkeds, markeds) do
     case Enum.find(unmarkeds, &(&1.nfa == state)) do
-      %Leex.DfaState{no: t} ->
+      %__MODULE__{no: t} ->
         {:yes, t}
 
       nil ->
         case Enum.find(markeds, &(&1.nfa == state)) do
-          %Leex.DfaState{no: t} -> {:yes, t}
+          %__MODULE__{no: t} -> {:yes, t}
           nil -> :no
         end
     end

@@ -1,5 +1,5 @@
 defmodule Leex.Util do
-  alias Leex.Util.OrdSet
+  alias Leex.NFA
 
   defguard is_hex(c)
            when (c >= ?0 and c <= ?9) or
@@ -32,9 +32,9 @@ defmodule Leex.Util do
   def epsilon_trans(firsts), do: Enum.map(firsts, fn f -> {:epsilon, f} end)
 
   def pack_cc(char_class) do
-    List.foldl(char_class, OrdSet.new(), fn
-      {:range, cf, cl}, set -> OrdSet.put(set, {cf, cl})
-      c, set -> OrdSet.put(set, {c, c})
+    List.foldl(char_class, :ordsets.new(), fn
+      {:range, cf, cl}, set -> :ordsets.add_element({cf, cl}, set)
+      c, set -> :ordsets.add_element({c, c}, set)
     end)
     |> Enum.sort()
     |> pack_crs()
@@ -45,7 +45,7 @@ defmodule Leex.Util do
     |> comp_crs(0)
   end
 
-  def eclosure(states, nfa), do: eclosure(states, nfa, OrdSet.new())
+  def eclosure(states, nfa), do: eclosure(states, nfa, :ordsets.new())
 
   def move(states, cr, nfa) do
     for n <- states do
@@ -60,13 +60,12 @@ defmodule Leex.Util do
   defp in_crs(_cr, []), do: false
 
   defp eclosure([state | states], nfa, eclosure) do
-
-    %Leex.NfaState{edges: edges} = elem(nfa, state - 1)
+    %NFA{edges: edges} = elem(nfa, state - 1)
 
     eclosure(
-      for({:epsilon, n} <- edges, !OrdSet.member?(eclosure, n), do: n) ++ states,
+      for({:epsilon, n} <- edges, !:ordsets.is_element(n, eclosure), do: n) ++ states,
       nfa,
-      OrdSet.put(eclosure, state)
+      :ordsets.add_element(state, eclosure)
     )
   end
 
