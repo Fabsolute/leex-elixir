@@ -30,7 +30,7 @@ defmodule Leex.Core do
         end
 
       quote do
-        defp yyaction(
+        defp leex_action(
                unquote(action),
                unquote(Macro.var(token_len, nil)),
                unquote(Macro.var(yy_tcs, nil)),
@@ -48,7 +48,7 @@ defmodule Leex.Core do
 
     quote do
       unquote(states)
-      defp yystate(s, ics, line, tlen, action, alen), do: {action, alen, tlen, ics, line, s}
+      defp leex_state(s, ics, line, tlen, action, alen), do: {action, alen, tlen, ics, line, s}
     end
   end
 
@@ -100,7 +100,7 @@ defmodule Leex.Core do
 
   defp get_state_code(%DFA{no: no, trans: [], accept: {:accept, accept}}) do
     quote do
-      defp yystate(unquote(no), ics, line, tlen, _, _) do
+      defp leex_state(unquote(no), ics, line, tlen, _, _) do
         {unquote(accept), tlen, ics, line}
       end
     end
@@ -112,7 +112,7 @@ defmodule Leex.Core do
     quote do
       unquote(accept_state_ast)
 
-      defp yystate(unquote(no), ics, line, tlen, _, _) do
+      defp leex_state(unquote(no), ics, line, tlen, _, _) do
         {unquote(accept), tlen, ics, line, unquote(no)}
       end
     end
@@ -124,7 +124,7 @@ defmodule Leex.Core do
     quote do
       unquote(noaccept_state_ast)
 
-      defp yystate(unquote(no), ics, line, tlen, action, alen) do
+      defp leex_state(unquote(no), ics, line, tlen, action, alen) do
         {action, alen, tlen, ics, line, unquote(no)}
       end
     end
@@ -237,7 +237,7 @@ defmodule Leex.Core do
 
   defp get_max_code(body, state, min, action, alen) do
     quote do
-      defp yystate(unquote(state), <<c, ics::binary>>, line, tlen, unquote(action), unquote(alen))
+      defp leex_state(unquote(state), <<c, ics::binary>>, line, tlen, unquote(action), unquote(alen))
            when c >= unquote(min) do
         unquote(body)
       end
@@ -246,7 +246,7 @@ defmodule Leex.Core do
 
   defp get_range_code(body, state, min, max, action, alen) do
     quote do
-      defp yystate(
+      defp leex_state(
              unquote(state),
              <<c, ics::binary>>,
              line,
@@ -262,7 +262,7 @@ defmodule Leex.Core do
 
   defp get_1_code(body, state, char, action, alen) do
     quote do
-      defp yystate(
+      defp leex_state(
              unquote(state),
              <<unquote(char), ics::binary>>,
              line,
@@ -277,7 +277,7 @@ defmodule Leex.Core do
 
   defp get_body(next, line, action, alen) do
     quote do
-      yystate(
+      leex_state(
         unquote(next),
         ics,
         unquote(line),

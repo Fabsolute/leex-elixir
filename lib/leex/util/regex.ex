@@ -1,6 +1,10 @@
 defmodule Leex.Util.Regex do
   alias Leex.Util
-  require Util
+
+  defguard is_hex(c)
+           when (c >= ?0 and c <= ?9) or
+                  (c >= ?A and c <= ?F) or
+                  (c >= ?a and c <= ?f)
 
   def parse_rule_regexp(regex, [{name, def} | defs]) do
     regex
@@ -147,7 +151,7 @@ defmodule Leex.Util.Regex do
     {(c1 * 8 + c2) * 8 + c3 - 73 * ?0, string}
   end
 
-  defp re_char(?\\, <<?x, c1, c2, string::binary>>) when Util.is_hex(c1) and Util.is_hex(c2) do
+  defp re_char(?\\, <<?x, c1, c2, string::binary>>) when is_hex(c1) and is_hex(c2) do
     {List.to_integer([c1, c2], 16), string}
   end
 
@@ -161,7 +165,7 @@ defmodule Leex.Util.Regex do
   defp re_char(?\\, ""), do: Util.parse_error({:unterminated, "\\"})
   defp re_char(c, string), do: {c, string}
 
-  defp re_hex(<<c, string::binary>>, list_of_hex) when Util.is_hex(c),
+  defp re_hex(<<c, string::binary>>, list_of_hex) when is_hex(c),
     do: re_hex(string, [c | list_of_hex])
 
   defp re_hex(<<?}, string::binary>>, list_of_hex) do

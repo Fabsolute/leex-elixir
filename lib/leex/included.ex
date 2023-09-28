@@ -116,8 +116,8 @@ defmodule Leex.Included do
         %{
           initial_state: @initial_state,
           module: __MODULE__,
-          state: &yystate/6,
-          action: &yyaction/4
+          state: &leex_state/6,
+          action: &leex_action/4
         }
       end
     end

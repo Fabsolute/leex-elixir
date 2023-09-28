@@ -1,11 +1,6 @@
 defmodule Leex.Util do
   alias Leex.NFA
 
-  defguard is_hex(c)
-           when (c >= ?0 and c <= ?9) or
-                  (c >= ?A and c <= ?F) or
-                  (c >= ?a and c <= ?f)
-
   def parse_error(error) do
     throw({:parse_error, error})
   end
