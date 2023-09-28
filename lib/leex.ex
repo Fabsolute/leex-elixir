@@ -1,5 +1,5 @@
 defmodule Leex do
-  alias Leex.Core
+  alias Leex.Generator
 
   @token :token
   @skip_token :skip_token
@@ -61,6 +61,6 @@ defmodule Leex do
     Module.delete_attribute(env.module, :rules)
     Module.delete_attribute(env.module, :defs)
 
-    Core.generate_functions(rules, defs)
+    Generator.generate_functions(rules, defs)
   end
 end

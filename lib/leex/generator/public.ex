@@ -1,9 +1,8 @@
-defmodule Leex.Included do
-  def get_included_functions(initial_state) do
+defmodule Leex.Generator.Public do
+  def generate_public(initial_state) do
     quote do
       alias Leex.Runtime
 
-      @initial_state unquote(initial_state)
       def test() do
         string("[1,2,3,4,5,6, :ahmet, [:turk, 4]]")
       end
@@ -25,7 +24,7 @@ defmodule Leex.Included do
       def token(string, [], line) do
         Runtime.Token.token(
           get_config(),
-          @initial_state,
+          unquote(initial_state),
           string,
           line,
           string,
@@ -59,7 +58,7 @@ defmodule Leex.Included do
       def tokens([], string, line) do
         Runtime.Tokens.tokens(
           get_config(),
-          @initial_state,
+          unquote(initial_state),
           string,
           line,
           string,
@@ -114,7 +113,7 @@ defmodule Leex.Included do
       @compile {:inline, get_config: 0}
       defp get_config() do
         %{
-          initial_state: @initial_state,
+          initial_state: unquote(initial_state),
           module: __MODULE__,
           state: &leex_state/6,
           action: &leex_action/4
