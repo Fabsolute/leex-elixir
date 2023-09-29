@@ -1,5 +1,6 @@
 defmodule Leex.Runtime.Tokens do
   alias Leex.Runtime.{Helper, SkipTokens}
+  alias Leex.Token
 
   def tokens(
         config,
@@ -86,7 +87,7 @@ defmodule Leex.Runtime.Tokens do
     end
   end
 
-  defp tokens_cont(config, string, line, {:token, token}, tokens) do
+  defp tokens_cont(config, string, line, %Token{type: :token, value: token, push_back: nil}, tokens) do
     tokens(
       config,
       config.initial_state,
@@ -101,7 +102,7 @@ defmodule Leex.Runtime.Tokens do
     )
   end
 
-  defp tokens_cont(config, string, line, {:token, token, push}, tokens) do
+  defp tokens_cont(config, string, line, %Token{type: :token, value: token, push_back: push}, tokens) do
     string = push <> string
 
     tokens(
@@ -118,20 +119,20 @@ defmodule Leex.Runtime.Tokens do
     )
   end
 
-  defp tokens_cont(_config, string, line, {:end_token, token}, tokens) do
+  defp tokens_cont(_config, string, line, %Token{type: :end_token, value: token, push_back: nil}, tokens) do
     {:done, {:ok, Helper.reverse(tokens, [token]), line}, string}
   end
 
-  defp tokens_cont(_config, string, line, {:end_token, token, push}, tokens) do
+  defp tokens_cont(_config, string, line, %Token{type: :end_token, value: token, push_back: push}, tokens) do
     string = push <> string
     {:done, {:ok, Helper.reverse(tokens, [token]), line}, string}
   end
 
-  defp tokens_cont(config, string, line, :skip_token, tokens) do
+  defp tokens_cont(config, string, line, %Token{type: :skip_token, push_back: nil}, tokens) do
     tokens(config, config.initial_state, string, line, string, 0, line, tokens, :reject, 0)
   end
 
-  defp tokens_cont(config, string, line, {:skip_token, push}, tokens) do
+  defp tokens_cont(config, string, line, %Token{type: :skip_token, push_back: push}, tokens) do
     string = push <> string
     tokens(config, config.initial_state, string, line, string, 0, line, tokens, :reject, 0)
   end

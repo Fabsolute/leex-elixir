@@ -1,5 +1,6 @@
 defmodule Leex.Runtime.SkipTokens do
   alias Leex.Runtime.Helper
+  alias Leex.Token
 
   def skip_tokens(config, string, line, error) do
     skip_tokens(config, config.initial_state, string, line, string, 0, line, error, :reject, 0)
@@ -63,29 +64,29 @@ defmodule Leex.Runtime.SkipTokens do
     end
   end
 
-  defp skip_cont(config, string, line, {:token, _token}, error) do
+  defp skip_cont(config, string, line, %Token{type: :token, push_back: nil}, error) do
     skip_tokens(config, config.initial_state, string, line, string, 0, line, error, :reject, 0)
   end
 
-  defp skip_cont(config, string, line, {:token, _token, push}, error) do
+  defp skip_cont(config, string, line, %Token{type: :token, push_back: push}, error) do
     string = push <> string
     skip_tokens(config, config.initial_state, string, line, string, 0, line, error, :reject, 0)
   end
 
-  defp skip_cont(_config, string, line, {:end_token, _token}, error) do
+  defp skip_cont(_config, string, line, %Token{type: :end_token, push_back: nil}, error) do
     {:done, {:error, error, line}, string}
   end
 
-  defp skip_cont(_config, string, line, {:end_token, _token, push}, error) do
+  defp skip_cont(_config, string, line, %Token{type: :end_token, push_back: push}, error) do
     string = push <> string
     {:done, {:error, error, line}, string}
   end
 
-  defp skip_cont(config, string, line, :skip_token, error) do
+  defp skip_cont(config, string, line, %Token{type: :skip_token, push_back: nil}, error) do
     skip_tokens(config, config.initial_state, string, line, string, 0, line, error, :reject, 0)
   end
 
-  defp skip_cont(config, string, line, {:skip_token, push}, error) do
+  defp skip_cont(config, string, line,  %Token{type: :skip_token, push_back: push}, error) do
     string = push <> string
     skip_tokens(config, config.initial_state, string, line, string, 0, line, error, :reject, 0)
   end

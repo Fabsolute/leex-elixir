@@ -1,56 +1,56 @@
 defmodule Leex do
   alias Leex.Generator
+  alias Leex.Token
 
-  @token :token
-  @skip_token :skip_token
-  @end_token :end_token
-
-  defmacro __using__(_opts) do
+  @spec defd(String.t(), String.t()) :: Macro.t()
+  defmacro defd(name, definition) when is_bitstring(name) and is_bitstring(definition) do
     quote do
-      @defs []
-      @rules []
-      import unquote(__MODULE__)
-      @before_compile unquote(__MODULE__)
+      @defs {unquote(name), unquote(definition)}
     end
   end
 
-  defmacro defd(name, definition) when is_bitstring(definition) do
-    quote do
-      @defs @defs ++ [{unquote(name), unquote(definition)}]
-    end
-  end
-
+  @spec skip(String.t()) :: Macro.t()
   defmacro skip(rule) when is_bitstring(rule) do
-    skip_token = @skip_token
-
     quote do
-      @rules @rules ++ [{unquote(rule), unquote(skip_token)}]
+      @rules {unquote(rule), Token.skip_token() |> Macro.escape()}
     end
   end
 
+  @spec defr(String.t(), do: Macro.t()) :: Macro.t()
   defmacro defr(rule, do: expr) when is_bitstring(rule) do
     quote do
-      @rules @rules ++ [{unquote(rule), unquote(expr |> Macro.escape())}]
+      @rules {unquote(rule), unquote(expr |> Macro.escape())}
     end
   end
 
-  defmacro skip_token(push_back) do
-    {@skip_token, push_back}
+  @spec skip_token(Token.push_back()) :: Token.skip_token()
+  defmacro skip_token(push_back \\ nil) do
+    quote do
+      Token.skip_token(unquote(push_back))
+    end
   end
 
+  @spec token(any, Token.push_back()) :: Token.token()
   defmacro token(selection, push_back \\ nil) do
-    if push_back == nil do
-      {@token, selection}
-    else
-      {@token, selection, push_back}
+    quote do
+      Token.token(unquote(selection), unquote(push_back))
     end
   end
 
+  @spec end_token(any, Token.push_back()) :: Token.end_token()
   defmacro end_token(selection, push_back \\ nil) do
-    if push_back == nil do
-      {@end_token, selection}
-    else
-      {@end_token, selection, push_back}
+    quote do
+      Token.end_token(unquote(selection), unquote(push_back))
+    end
+  end
+
+  defmacro __using__([]) do
+    quote do
+      Module.register_attribute(__MODULE__, :defs, accumulate: true)
+      Module.register_attribute(__MODULE__, :rules, accumulate: true)
+
+      import unquote(__MODULE__)
+      @before_compile unquote(__MODULE__)
     end
   end
 

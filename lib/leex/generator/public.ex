@@ -4,7 +4,32 @@ defmodule Leex.Generator.Public do
       alias Leex.Runtime
 
       def test() do
-        string("[1,2,3,4,5,6, :ahmet, [:turk, 4]]")
+        {:ok,
+         [
+           {:"[", 1},
+           {:int, 1, 1},
+           {:",", 1},
+           {:int, 1, 2},
+           {:",", 1},
+           {:int, 1, 3},
+           {:",", 1},
+           {:int, 1, 4},
+           {:",", 1},
+           {:int, 1, 5},
+           {:",", 1},
+           {:int, 1, 6},
+           {:",", 1},
+           {:atom, 1, :ahmet},
+           {:",", 1},
+           {:"[", 1},
+           {:atom, 1, :turk},
+           {:",", 1},
+           {:int, 1, 4},
+           {:"]", 1},
+           {:"]", 1}
+         ],
+         1} =
+          string("[1,2,3,4,5,6, :ahmet, [:turk, 4]]")
       end
 
       def string(string), do: string(string, 1)
