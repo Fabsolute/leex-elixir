@@ -2,6 +2,10 @@ defmodule Leex.Generator do
   alias Leex.Util
   alias Leex.Generator
 
+  @spec generate_functions(
+          list({String.t(), Macro.t()}),
+          list({String.t(), String.t()})
+        ) :: Macro.t()
   def generate_functions(rules, defs) do
     {{dfa, dfa_first}, actions} = get_actions(rules, defs)
 
