@@ -2,10 +2,6 @@ defmodule Leex.Generator do
   alias Leex.Util
   alias Leex.Generator
 
-  @spec generate_functions(
-          list({String.t(), Macro.t()}),
-          list({String.t(), String.t()})
-        ) :: Macro.t()
   def generate_functions(rules, defs) do
     {{dfa, dfa_first}, actions} = get_actions(rules, defs)
 
@@ -40,8 +36,6 @@ defmodule Leex.Generator do
       end
     end)
     |> then(fn {regex_actions, actions} ->
-      dfa = Leex.DFA.make_dfa(regex_actions)
-
       actions =
         Enum.map(actions, fn
           {action, :empty_action} ->
@@ -65,7 +59,7 @@ defmodule Leex.Generator do
             {action, code, vars}
         end)
 
-      {dfa, actions}
+      {Leex.DFA.make_dfa(regex_actions), actions}
     end)
   end
 end

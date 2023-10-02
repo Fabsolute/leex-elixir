@@ -1,4 +1,6 @@
 defmodule Leex.Generator.Action do
+  @opaque action :: {integer, :empty_action} | {integer, Macro.t(), list(atom)}
+
   def generate_actions(actions) do
     for {action, code, [token_line, yy_tcs, token_len]} <- actions do
       token_val_definition =

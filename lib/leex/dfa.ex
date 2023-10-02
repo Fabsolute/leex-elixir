@@ -1,8 +1,8 @@
 defmodule Leex.DFA do
-  defstruct no: nil, nfa: [], trans: [], accept: :noaccept
-
   alias Leex.Util
   alias Leex.NFA
+
+  defstruct no: nil, nfa: [], trans: [], accept: :noaccept
 
   def make_dfa(regex_actions) do
     {nfa, nfa_first} = NFA.build_combined_nfa(regex_actions)
